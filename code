@@ -1,0 +1,81 @@
+#include <Keypad.h>
+#include <Servo.h>
+
+#define buzzer 11
+#define led 12
+
+Servo door;
+
+const byte ROWS = 4;
+const byte COLS = 4;
+
+char keys[ROWS][COLS] = {
+  {'1','2','3','A'},
+  {'4','5','6','B'},
+  {'7','8','9','C'},
+  {'*','0','#','D'}
+};
+
+byte rowPins[ROWS] = {9,8,7,6};
+byte colPins[COLS] = {5,4,3,2};
+
+Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
+
+String password = "1234";
+String input = "";
+
+int failedAttempts = 0;
+bool locked = false;
+
+void setup() {
+  Serial.begin(9600);
+  door.attach(10);
+  pinMode(buzzer, OUTPUT);
+  pinMode(led, OUTPUT);
+  door.write(0);
+}
+
+void loop() {
+
+  if(locked){
+    return;
+  }
+
+  char key = keypad.getKey();
+
+  if(key){
+    input += key;
+    Serial.println(input);
+
+    if(input.length() == 4){
+      
+      if(input == password){
+        Serial.println("Access Granted");
+        door.write(90);
+        delay(3000);
+        door.write(0);
+        failedAttempts = 0;
+      }
+      else{
+        Serial.println("Wrong Password");
+        failedAttempts++;
+      }
+
+      input = "";
+    }
+  }
+
+  if(failedAttempts >= 3){
+    Serial.println("Brute Force Detected!");
+    digitalWrite(led, HIGH);
+    digitalWrite(buzzer, HIGH);
+    locked = true;
+
+    delay(10000);  // 10 sec lock
+
+    digitalWrite(led, LOW);
+    digitalWrite(buzzer, LOW);
+    failedAttempts = 0;
+    locked = false;
+  }
+}
